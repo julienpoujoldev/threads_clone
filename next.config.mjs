@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+
   typescript: {ignoreBuildErrors:true},
     experimental: {
      
@@ -11,6 +12,7 @@ const nextConfig = {
     //   ignoreDuringBuilds: true,
     },
     images: {
+      unoptimized: true,            // TODO : only for testing : due to Vercel Hobby plan. 
       remotePatterns: [
         {
           protocol: "https",
