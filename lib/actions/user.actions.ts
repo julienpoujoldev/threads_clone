@@ -1,11 +1,11 @@
 "use server";
 
+import { FilterQuery, SortOrder } from "mongoose";
 import { revalidatePath } from "next/cache";
+import Community from "../Models/community.model";
+import Thread from "../Models/thread.model";
 import User from "../Models/users.model";
 import { connectToDB } from "../mongoose";
-import Thread from "../Models/thread.model";
-import { getJsPageSizeInKb } from "next/dist/build/utils";
-import { FilterQuery, SortOrder } from "mongoose";
 
 interface Params {
   userId: string;
@@ -37,18 +37,17 @@ export async function updateUser({
       revalidatePath(path);
     }
   } catch (error: any) {
-    console.log(error);
+    throw new Error(`Failed to create/update user: ${error.message}`);
   }
 }
 
 export async function fetchUser(userId: string) {
   try {
     connectToDB();
-    return await User.findOne({ id: userId });
-    // .populate({
-    //   path: "communities",
-    //   model: Community,
-    // });
+    return await User.findOne({ id: userId }).populate({
+      path: "communities",
+      model: Community,
+    });
   } catch (e: any) {
     throw new Error(`Failed to fetch user: ${e.message}`);
   }
@@ -58,19 +57,21 @@ export async function fetchUserPosts(userId: string) {
   try {
     connectToDB();
 
-    //TODO community
     const threads = await User.findOne({ id: userId }).populate({
       path: "threads",
       model: Thread,
-      populate: {
-        path: "children",
-        model: Thread,
-        populate: {
-          path: "author",
-          model: User,
-          select: "name image id",
+      populate: [
+        { path: "community", model: Community, select: "name id image _id" },
+        {
+          path: "children",
+          model: Thread,
+          populate: {
+            path: "author",
+            model: User,
+            select: "name image id",
+          },
         },
-      },
+      ],
     });
 
     return threads;
@@ -122,54 +123,25 @@ export async function fetchUsers({
   }
 }
 
-// export async function getActivity(userId: string) {
-//   try {
-//     connectToDB();
-
-//     //find threats created by user
-//     const userThreads = await Thread.find({ author: userId });
-
-//     // collect all child threads from "children" field
-//     const childThreadsIds = userThreads.reduce((acc, userThread) => {
-//       return acc.concat(userThread.children);
-//     }, []);
-
-//     const replies = await Thread.find({
-//       _id: { $in: childThreadsIds },
-//       author: { $ne: userId },
-//     }).populate({ path: "author", model: User, select: "name userId" });
-
-//     return replies;
-//   } catch (e: any) {
-//     throw new Error(`Failed to get notifications: ${e.message}`);
-//   }
-// }
-
 export async function getActivity(userId: string) {
   try {
     connectToDB();
 
-    // Find all threads created by the user
+    //find threats created by user
     const userThreads = await Thread.find({ author: userId });
 
-    // Collect all the child thread ids (replies) from the 'children' field of each user thread
-    const childThreadIds = userThreads.reduce((acc, userThread) => {
+    // collect all child threads from "children" field
+    const childThreadsIds = userThreads.reduce((acc, userThread) => {
       return acc.concat(userThread.children);
     }, []);
 
-    // Find and return the child threads (replies) excluding the ones created by the same user
     const replies = await Thread.find({
-      _id: { $in: childThreadIds },
-      author: { $ne: userId }, // Exclude threads authored by the same user
-    }).populate({
-      path: "author",
-      model: User,
-      select: "name image _id",
-    });
+      _id: { $in: childThreadsIds },
+      author: { $ne: userId },
+    }).populate({ path: "author", model: User, select: "name userId image" });
 
     return replies;
-  } catch (error) {
-    console.error("Error fetching replies: ", error);
-    throw error;
+  } catch (e: any) {
+    throw new Error(`Failed to get notifications: ${e.message}`);
   }
 }

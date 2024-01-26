@@ -16,12 +16,14 @@ import { usePathname, useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Textarea } from "../ui/textarea";
+import { useOrganization } from "@clerk/nextjs";
 
 interface PostThreadProps {
   userId: string;
 }
 
 function PostThread({ userId }: PostThreadProps) {
+  const { organization } = useOrganization();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -37,7 +39,7 @@ function PostThread({ userId }: PostThreadProps) {
     await createThread({
       text: values.thread,
       author: userId,
-      communityId: "",
+      communityId: organization ? organization.id : "",
       path: pathname,
     });
 

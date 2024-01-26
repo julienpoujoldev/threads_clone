@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import Thread from "../Models/thread.model";
 import User from "../Models/users.model";
 import { connectToDB } from "../mongoose";
+import Community from "../Models/community.model";
 
 interface Params {
   text: string;
@@ -11,6 +12,42 @@ interface Params {
   communityId: string;
   path: string;
 }
+
+// export async function createThread({
+//   text,
+//   author,
+//   communityId,
+//   path,
+// }: Params) {
+//   try {
+//     connectToDB();
+
+//     const communityIdObject = await Community.findOne(
+//       { id: communityId },
+//       { _id: 1 }
+//     );
+
+//     const createdThread = await Thread.create({
+//       text,
+//       author,
+//       community: communityIdObject,
+//     });
+
+//     await User.findByIdAndUpdate(author, {
+//       $push: { threads: createdThread._id },
+//     });
+
+//     if (communityIdObject) {
+//       await Community.findByIdAndUpdate(communityIdObject._id, {
+//         $push: { threads: createdThread._id },
+//       });
+//     }
+
+//     revalidatePath(path);
+//   } catch (e: any) {
+//     throw new Error(`error creating thread, ${e.message}`);
+//   }
+// }
 
 export async function createThread({
   text,
@@ -21,19 +58,32 @@ export async function createThread({
   try {
     connectToDB();
 
+    const communityIdObject = await Community.findOne(
+      { id: communityId },
+      { _id: 1 }
+    );
+
     const createdThread = await Thread.create({
       text,
       author,
-      community: null,
+      community: communityIdObject, // Assign communityId if provided, or leave it null for personal account
     });
 
+    // Update User model
     await User.findByIdAndUpdate(author, {
       $push: { threads: createdThread._id },
     });
 
+    if (communityIdObject) {
+      // Update Community model
+      await Community.findByIdAndUpdate(communityIdObject, {
+        $push: { threads: createdThread._id },
+      });
+    }
+
     revalidatePath(path);
-  } catch (e: any) {
-    throw new Error(`error creating thread, ${e.message}`);
+  } catch (error: any) {
+    throw new Error(`Failed to create thread: ${error.message}`);
   }
 }
 
@@ -49,6 +99,10 @@ export async function fetchPosts(pageNumber = 1, pageSize = 20) {
     .skip(skipAmount)
     .limit(pageSize)
     .populate({ path: "author", model: User })
+    .populate({
+      path: "community",
+      model: Community,
+    })
     .populate({
       path: "children",
       populate: {
@@ -73,12 +127,16 @@ export async function fetchPostById(id: string) {
   connectToDB();
 
   try {
-    //TODO populate community
     const post = await Thread.findById(id)
       .populate({
         path: "author",
         model: User,
         select: "name _id id image",
+      })
+      .populate({
+        path: "community",
+        model: Community,
+        select: "_id id name image",
       })
       .populate({
         path: "children",
