@@ -21,6 +21,11 @@ const threadSchema = new mongoose.Schema({
   parentId: {
     type: String,
   },
+  likedBy: [
+    {
+      type: String,
+    },
+  ],
   children: [
     {
       type: mongoose.Schema.Types.ObjectId,

@@ -1,6 +1,7 @@
 import { formatDateString } from "@/lib/utils";
 import Image from "next/image";
 import Link from "next/link";
+import LikeButton from "@/components/shared/LikeButton";
 
 interface Props {
   id: string;
@@ -25,8 +26,6 @@ const ThreadCard = ({
   comments,
   isComment,
 }: Props) => {
-  // console.log("COMMUNITY : ", community);
-
   return (
     <article
       className={`flex w-full flex-col rounded-xl  ${
@@ -49,7 +48,7 @@ const ThreadCard = ({
           <div className="flex w-full flex-col">
             <Link
               href={`/profile/${author.id}`}
-              className="flex flex-1 w-[33%] h-11 "
+              className="flex flex-1 w-full h-11 "
             >
               <h2 className="cursor-pointer text-base-semibold text-light-1">
                 {author.name}
@@ -57,15 +56,8 @@ const ThreadCard = ({
             </Link>
             <p className="mt-2 text-small-regular text-light-2">{content}</p>
             <div className={`${isComment && "mb-10"} mt-4 flex flex-col gap-3`}>
-              <div className="flex gap-3.5">
-                {/* TODO : implement like button */}
-                <Image
-                  src="/assets/heart-gray.svg"
-                  alt="heart"
-                  width={24}
-                  height={24}
-                  className="cursor-pointer object-contain"
-                ></Image>
+              <div className="flex items-center gap-3.5">
+                <LikeButton threadId={id} currentUserId={currentUserId} />
                 <Link href={`/thread/${id}`}>
                   <Image
                     src="/assets/reply.svg"
